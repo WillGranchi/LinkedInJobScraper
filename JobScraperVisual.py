@@ -1,13 +1,9 @@
-try:
-    import streamlit as st
-    import requests
-    from bs4 import BeautifulSoup
-    from datetime import datetime, timedelta
-    import pandas as pd
-    import time
-except ImportError:
-    import subprocess
-    import sys
+import streamlit as st
+import requests
+from bs4 import BeautifulSoup
+from datetime import datetime, timedelta
+import pandas as pd
+import time
     
     # Install required packages
     subprocess.check_call([sys.executable, "-m", "pip", "install", "beautifulsoup4", "requests", "pandas", "streamlit"])
