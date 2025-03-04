@@ -4,17 +4,7 @@ from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 import pandas as pd
 import time
-    
-    # Install required packages
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "beautifulsoup4", "requests", "pandas", "streamlit"])
-    
-    # Import after installation
-    import streamlit as st
-    import requests
-    from bs4 import BeautifulSoup
-    from datetime import datetime, timedelta
-    import pandas as pd
-    import time
+
 
 def get_job_postings(company_urls):
     headers = {
