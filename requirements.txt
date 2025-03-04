@@ -1,0 +1,6 @@
+streamlit
+requests
+bs4
+datetime
+pandas
+time
