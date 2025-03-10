@@ -4,15 +4,16 @@ from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 import pandas as pd
 import time
+import json
+import os
 
-
-def get_job_postings(company_urls):
+def get_job_postings(company_urls, days_back=14):  # Modified function signature
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
     }
     
     all_jobs = []
-    one_month_ago = datetime.now() - timedelta(days=30)
+    cutoff_date = datetime.now() - timedelta(days=days_back)  # Modified to use parameter
     
     for url in company_urls:
         with st.spinner(f'Scraping jobs from {url}...'):
@@ -31,7 +32,7 @@ def get_job_postings(company_urls):
                         
                         post_date = datetime.strptime(date_posted[:10], '%Y-%m-%d')
                         
-                        if post_date >= one_month_ago:
+                        if post_date >= cutoff_date:
                             job_data = {
                                 'Title': title,
                                 'Company': company,
@@ -52,18 +53,64 @@ def get_job_postings(company_urls):
     
     return pd.DataFrame(all_jobs) if all_jobs else pd.DataFrame()
 
+def load_saved_lists():
+    if os.path.exists('saved_url_lists.json'):
+        with open('saved_url_lists.json', 'r') as f:
+            return json.load(f)
+    return {}
+
+def save_url_lists(lists):
+    with open('saved_url_lists.json', 'w') as f:
+        json.dump(lists, f)
+
 def main():
-    st.title('LinkedIn Job Scraper Dashboard')
+    st.title('LinkedIn Job Scraper')
     
-    # Session state for URLs
+    # Initialize session states
     if 'urls' not in st.session_state:
         st.session_state.urls = []
+    if 'saved_lists' not in st.session_state:
+        st.session_state.saved_lists = load_saved_lists()
 
-    # Input field for new URL
+    # Create columns for URL list management
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        # Existing date range selector
+        days_back = st.number_input(
+            'Number of days to look back:',
+            min_value=1,
+            max_value=365,
+            value=14,
+            help='Select how many days back to search for jobs'
+        )
+
+    with col2:
+        # Add saved list selector
+        saved_list_names = list(st.session_state.saved_lists.keys())
+        if saved_list_names:
+            selected_list = st.selectbox('Load saved URL list:', [''] + saved_list_names)
+            if selected_list and st.button('Load List'):
+                st.session_state.urls = st.session_state.saved_lists[selected_list].copy()
+                st.rerun()
+
+    # URL input and save functionality
     new_url = st.text_input('Enter LinkedIn Jobs Search URL:')
-    if st.button('Add URL'):
-        if new_url and new_url not in st.session_state.urls:
-            st.session_state.urls.append(new_url)
+    col3, col4 = st.columns([2, 1])
+    
+    with col3:
+        if st.button('Add URL'):
+            if new_url and new_url not in st.session_state.urls:
+                st.session_state.urls.append(new_url)
+
+    with col4:
+        # Save current list functionality
+        list_name = st.text_input('List name:')
+        if st.button('Save Current List'):
+            if list_name and st.session_state.urls:
+                st.session_state.saved_lists[list_name] = st.session_state.urls.copy()
+                save_url_lists(st.session_state.saved_lists)
+                st.success(f'List "{list_name}" saved successfully!')
 
     # Display and manage URLs
     st.subheader('Current URLs:')
@@ -76,13 +123,13 @@ def main():
                 st.session_state.urls.pop(i)
                 st.rerun()
 
-    # Scrape jobs button
+    # Modify the Scrape Jobs button section
     if st.button('Scrape Jobs') and st.session_state.urls:
-        df = get_job_postings(st.session_state.urls)
+        df = get_job_postings(st.session_state.urls, days_back)  # Pass days_back parameter
         
         if not df.empty:
             # Display results
-            st.subheader('Job Listings')
+            st.subheader(f'Job Listings (Past {days_back} days)')
             st.dataframe(df)
             
             # Download button
@@ -99,3 +146,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
