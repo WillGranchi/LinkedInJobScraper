@@ -63,6 +63,17 @@ def save_url_lists(lists):
     with open('saved_url_lists.json', 'w') as f:
         json.dump(lists, f)
 
+def delete_saved_list(list_name):
+    if os.path.exists('saved_url_lists.json'):
+        with open('saved_url_lists.json', 'r') as f:
+            saved_lists = json.load(f)
+        if list_name in saved_lists:
+            del saved_lists[list_name]
+            with open('saved_url_lists.json', 'w') as f:
+                json.dump(saved_lists, f)
+            return True
+    return False
+
 def main():
     st.title('LinkedIn Job Scraper')
     
@@ -86,13 +97,25 @@ def main():
         )
 
     with col2:
-        # Add saved list selector
+        # Add saved list selector and management
         saved_list_names = list(st.session_state.saved_lists.keys())
         if saved_list_names:
             selected_list = st.selectbox('Load saved URL list:', [''] + saved_list_names)
-            if selected_list and st.button('Load List'):
-                st.session_state.urls = st.session_state.saved_lists[selected_list].copy()
-                st.rerun()
+            col2a, col2b = st.columns([1, 1])
+            
+            with col2a:
+                if selected_list and st.button('Load List'):
+                    st.session_state.urls = st.session_state.saved_lists[selected_list].copy()
+                    st.rerun()
+            
+            with col2b:
+                if selected_list and st.button('Delete List'):
+                    if delete_saved_list(selected_list):
+                        st.session_state.saved_lists = load_saved_lists()
+                        if selected_list in st.session_state.saved_lists:
+                            del st.session_state.saved_lists[selected_list]
+                        st.success(f'List "{selected_list}" deleted successfully!')
+                        st.rerun()
 
     # URL input and save functionality
     new_url = st.text_input('Enter LinkedIn Jobs Search URL:')
@@ -104,15 +127,16 @@ def main():
                 st.session_state.urls.append(new_url)
 
     with col4:
-        # Save current list functionality
+        # Enhanced save/update list functionality
         list_name = st.text_input('List name:')
-        if st.button('Save Current List'):
+        if st.button('Save/Update List'):
             if list_name and st.session_state.urls:
+                # Update existing list or create new one
                 st.session_state.saved_lists[list_name] = st.session_state.urls.copy()
                 save_url_lists(st.session_state.saved_lists)
                 st.success(f'List "{list_name}" saved successfully!')
 
-    # Display and manage URLs
+    # Display and manage URLs with list context
     st.subheader('Current URLs:')
     for i, url in enumerate(st.session_state.urls):
         col1, col2 = st.columns([4, 1])
@@ -121,6 +145,10 @@ def main():
         with col2:
             if st.button('Remove', key=f'remove_{i}'):
                 st.session_state.urls.pop(i)
+                # If we're working with a saved list, update it
+                if 'current_list' in st.session_state and st.session_state.current_list:
+                    st.session_state.saved_lists[st.session_state.current_list] = st.session_state.urls.copy()
+                    save_url_lists(st.session_state.saved_lists)
                 st.rerun()
 
     # Modify the Scrape Jobs button section
